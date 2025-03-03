@@ -1,0 +1,287 @@
+#!/usr/bin/env bash
+
+# Define colors
+RED='\e[31m'
+GREEN='\e[32m'
+YELLOW='\e[33m'
+CYAN='\e[36m'
+WHITE='\e[37m'
+RESET='\e[0m'
+GRAY='\033[0;37m'
+
+show_help() {
+  echo -e "\n${CYAN}Usage:${RESET} $(basename "$0") [OPTIONS]\n"
+  echo -e "\nOptions:\n"
+  echo -e "  ${YELLOW}--help${RESET}      Show this help message and exit.\n"
+  echo -e "  ${YELLOW}-t ${GREEN}[TARGET]${RESET}    Specify target directly without interactive prompt. ${GREEN}TARGET ${RESET}can be IP, IP Range or DOMAIN."
+  echo -e "\nThis tool is designed to perform various types of ${CYAN}Nmap${RESET} scans on a target (IP or domain)."
+  echo -e "After entering the target, you will select a scan type and optional settings."
+
+  echo -e "\n${RESET}Scan Options:${RESET}\n"
+  echo -e "${RED}[1]${RESET}  ${CYAN}nmap -sV${RESET}            → Performs a basic service/version detection scan."
+  echo -e "                           This identifies open ports and the services running on them.\n"
+  echo -e "${RED}[2]${RESET}  ${CYAN}nmap -A${RESET}             → Enables aggressive mode, including OS detection, script scanning,"
+  echo -e "                           traceroute, and version detection.\n"
+  echo -e "${RED}[3]${RESET}  ${CYAN}nmap -A -p 1-65535${RESET}  → Performs an aggressive scan, but scans ${CYAN}all${RESET} 65,535 TCP ports."
+  echo -e "                           Useful when looking for non-standard services running on unusual ports.\n"
+
+  echo -e "${YELLOW}[4]${RESET}  ${CYAN}nmap -n -A -Pn -sT -sC --script=vuln -g53 -D 192.168.0.1${RESET}"
+  echo -e "                         → Performs a TCP-based scan (-sT) without DNS resolution (-n), with OS detection (-A),"
+  echo -e "                           and runs vulnerability scripts (--script=vuln)."
+  echo -e "                           Uses decoys (-D) to obscure the attack source and sets a specific source port (-g53).\n"
+
+  echo -e "${YELLOW}[5]${RESET}  ${CYAN}nmap -n -A -Pn -sT -sC --script=vuln -g53 -f --mtu 24 -D 192.168.0.1${RESET}"
+  echo -e "                         → Similar to option 4, but adds fragmentation (-f) and sets an MTU size (24) to evade detection.\n"
+
+  echo -e "${YELLOW}[6]${RESET}  ${CYAN}nmap -n -A -Pn -sT -sC --script=vuln -g53 -f --mtu 24 -D 192.168.0.1 -p 1-65535${RESET}"
+  echo -e "                         → Like option 5, but scans ${CYAN}all${RESET} ports, increasing the likelihood of finding vulnerabilities.\n"
+
+  echo -e "${YELLOW}[7]${RESET}  ${CYAN}nmap -n -A -Pn -sS -sC --script=vuln -g53 -f --mtu 24 -D 192.168.0.1${RESET}"
+  echo -e "                         → Uses SYN scan (-sS), which is stealthier than TCP scan (-sT), reducing detection chances.\n"
+
+  echo -e "${YELLOW}[8]${RESET}  ${CYAN}nmap -n -A -Pn -sS -sC --script=vuln -g53 -f --mtu 24 -D 192.168.0.1 -p 1-65535${RESET}"
+  echo -e "                         → Like option 7, but scans ${CYAN}all${RESET} ports, improving detection of hidden services.\n"
+
+  echo -e "${GREEN}[9]${RESET}  ${CYAN}proxychains nmap -A --script=vuln (You can add more after in more options)${RESET}"
+  echo -e "                         → Uses ProxyChains to route traffic through an anonymity network (Tor or other proxies),"
+  echo -e "                           making it harder to trace back the scan to the original source.\n"
+
+  echo -e "${GREEN}[0]${RESET}  ${CYAN}proxychains nmap -A --script=vuln -p 1-65535 (You can add more after in more options)${RESET}"
+  echo -e "                         → Like option 9, but scans ${CYAN}all${RESET} ports. This is a highly stealthy and thorough scan.\n"
+
+  echo -e "${CYAN}Timing Options:${RESET}\n"
+  echo -e "T0  → ${CYAN}Paranoid${RESET}: Extremely slow and stealthy (avoids detection but takes a long time)."
+  echo -e "T1  → ${CYAN}Sneaky${RESET}: Slightly faster but still very slow and stealthy."
+  echo -e "T2  → ${GREEN}Polite${RESET}: Slower than normal, reduces network congestion."
+  echo -e "T3  → ${GREEN}Normal${RESET}: Default speed."
+  echo -e "T4  → ${YELLOW}Aggressive${RESET}: Faster but noisier (may trigger IDS/IPS detection)."
+  echo -e "T5  → ${RED}Insane${RESET}: Very fast, likely to be detected but useful for quick scans."
+
+  echo -e "\n${CYAN}Example usage:${RESET}"
+  echo -e "$(basename "$0")          → Run the script interactively."
+  echo -e "$(basename "$0") -t example.com → Run scan on specified target non-interactively."
+  echo -e "$(basename "$0") --help   → Show this help message.\n"
+}
+
+show_help_por() {
+  echo -e "\n${CYAN}Uso:${RESET} $(basename "$0") [OPÇÕES]"
+  echo -e "\nOpções:"
+  echo -e "  ${YELLOW}--help${RESET}      Exibe esta mensagem de ajuda e sai.\n"
+  echo -e "  ${YELLOW}-t ${GREEN}[ALVO]${RESET}      Especifica o alvo diretamente sem prompt interativo. O ${GREEN}ALVO${RESET} pode ser IP, Range de IP ou DOMINIO."
+  echo -e "\nEsta ferramenta executa diferentes tipos de varreduras com o ${CYAN}Nmap${RESET} em um alvo (IP ou domínio)."
+  echo -e "Após inserir o alvo, você selecionará um tipo de varredura e configurações opcionais."
+
+  echo -e "\n${CYAN}Opções de Varredura:${RESET}"
+  echo -e "${RED}[1]${RESET}  ${CYAN}nmap -sV${RESET}            → Executa uma varredura básica para detectar serviços/versões."
+  echo -e "                           Identifica portas abertas e os serviços em execução.\n"
+  echo -e "${RED}[2]${RESET}  ${CYAN}nmap -A${RESET}             → Habilita o modo agressivo, incluindo detecção de sistema operacional,"
+  echo -e "                           execução de scripts, rastreamento de rota (traceroute) e detecção de versões.\n"
+  echo -e "${RED}[3]${RESET}  ${CYAN}nmap -A -p 1-65535${RESET}  → Executa uma varredura agressiva, mas analisando ${CYAN}todas${RESET} as 65.535 portas TCP."
+  echo -e "                           Útil para encontrar serviços rodando em portas incomuns.\n"
+
+  echo -e "${YELLOW}[4]${RESET}  ${CYAN}nmap -n -A -Pn -sT -sC --script=vuln -g53 -D 192.168.0.1${RESET}"
+  echo -e "                         → Executa uma varredura baseada em TCP (-sT) sem resolução de DNS (-n), com detecção de SO (-A),"
+  echo -e "                           e executa scripts de vulnerabilidade (--script=vuln)."
+  echo -e "                           Usa decoys (-D) para mascarar a origem do ataque e define uma porta de origem específica (-g53).\n"
+
+  echo -e "${YELLOW}[5]${RESET}  ${CYAN}nmap -n -A -Pn -sT -sC --script=vuln -g53 -f --mtu 24 -D 192.168.0.1${RESET}"
+  echo -e "                         → Semelhante à opção 4, mas adiciona fragmentação (-f) e define um tamanho de MTU (24) para evitar detecção.\n"
+
+  echo -e "${YELLOW}[6]${RESET}  ${CYAN}nmap -n -A -Pn -sT -sC --script=vuln -g53 -f --mtu 24 -D 192.168.0.1 -p 1-65535${RESET}"
+  echo -e "                         → Igual à opção 5, mas escaneia ${CYAN}todas${RESET} as portas, aumentando a chance de encontrar vulnerabilidades.\n"
+
+  echo -e "${YELLOW}[7]${RESET}  ${CYAN}nmap -n -A -Pn -sS -sC --script=vuln -g53 -f --mtu 24 -D 192.168.0.1${RESET}"
+  echo -e "                         → Usa uma varredura SYN (-sS), que é mais discreta do que a varredura TCP (-sT), reduzindo a detecção.\n"
+
+  echo -e "${YELLOW}[8]${RESET}  ${CYAN}nmap -n -A -Pn -sS -sC --script=vuln -g53 -f --mtu 24 -D 192.168.0.1 -p 1-65535${RESET}"
+  echo -e "                         → Igual à opção 7, mas escaneia ${CYAN}todas${RESET} as portas, aumentando a detecção de serviços ocultos.\n"
+
+  echo -e "${GREEN}[9]${RESET}  ${CYAN}proxychains nmap -A --script=vuln(you can add more options after) ${RESET}"
+  echo -e "                         → Usa o ProxyChains para encaminhar o tráfego por uma rede anônima (Tor ou outros proxies),"
+  echo -e "                           dificultando o rastreamento da origem do escaneamento.\n"
+
+  echo -e "${GREEN}[0]${RESET}  ${CYAN}proxychains nmap -A --script=vuln -p 1-65535(you can add more options after)${RESET}"
+  echo -e "                         → Igual à opção 9, mas escaneia ${CYAN}todas${RESET} as portas. Essa é uma varredura altamente discreta e completa.\n"
+
+  echo -e "${CYAN}Opções de Tempo:${RESET}\n"
+  echo -e "T0  → ${CYAN}Paranoico${RESET}: Extremamente lento e discreto (evita detecção, mas demora muito)."
+  echo -e "T1  → ${CYAN}Furtivo${RESET}: Um pouco mais rápido, mas ainda muito lento e discreto."
+  echo -e "T2  → ${GREEN}Educado${RESET}: Mais lento que o normal, reduz a sobrecarga na rede."
+  echo -e "T3  → ${GREEN}Normal${RESET}: Velocidade padrão."
+  echo -e "T4  → ${YELLOW}Agressivo${RESET}: Mais rápido, mas pode ser detectado por sistemas de segurança."
+  echo -e "T5  → ${RED}Insano${RESET}: Muito rápido, altamente detectável, mas útil para escaneamentos rápidos."
+
+  echo -e "\n${CYAN}Exemplo de uso:${RESET}"
+  echo -e "$(basename "$0")          → Executa o script de forma interativa."
+  echo -e "$(basename "$0") -t exemplo.com → Executa o scan no alvo especificado sem interação."
+  echo -e "$(basename "$0") --help   → Exibe esta mensagem de ajuda.\n"
+}
+
+#Check for --help argument
+if [[ "$1" == "--help" ]]; then
+  read -p "1-English 2-Português: " lingua
+  if [[ "$lingua" == 1 ]]; then
+    show_help
+  elif [[ "$lingua" == 2 ]]; then
+    show_help_por
+  else
+    echo "Invalid option."
+  fi
+  exit
+fi
+
+echo -e "\n${CYAN}
+ █████╗ ██╗   ██╗████████╗ ██████╗     ███╗   ██ ███╗   ███╗   ╔███╗ ╔████╗
+██╔══██╗██║   ██║╚══██╔══╝██╔═══██╗    ████╗  ██║████╗ ████║██╔══██╗██╔══██╗
+███████║██║   ██║   ██║   ██║   ██║    ██╔██╗ ██║██╔████╔██║███████║██████╔╝
+██╔══██║██║   ██║   ██║   ██║   ██║    ██║╚██╗██║██║╚██╔╝██║██╔══██║██╔═══╝ 
+██║  ██║╚██████╔╝   ██║   ╚██████╔╝    ██║ ╚████║██║ ╚═╝ ██║██║  ██║██║     
+╚═╝  ╚═╝ ╚═════╝    ╚═╝    ╚═════╝     ╚═╝  ╚═══╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝
+${RESET}Made by ${CYAN}Alexzera${RESET}.\n"
+
+echo -e "\n${CYAN}Enjoy${RESET}!\n"
+
+if [[ "$1" == "-t" && -n "$2" ]]; then
+  alvo="$2"
+else
+  # Se não, pergunta o alvo interativamente
+  read -p "Target (IP or Domain): " alvo
+fi
+
+echo -e "\nSelect an option:\n"
+echo -e "${RED}[1]${RESET} nmap -sV"
+echo -e "${RED}[2]${RESET} nmap -A"
+echo -e "${RED}[3]${RESET} nmap -A -p 1-65535"
+echo -e "${YELLOW}[4]${RESET} nmap -n -A -Pn -sT -sC --script=vuln -g53 -D 192.168.0.1"
+echo -e "${YELLOW}[5]${RESET} nmap -n -A -Pn -sT -sC --script=vuln -g53 -f --mtu 24 -D 192.168.0.1"
+echo -e "${YELLOW}[6]${RESET} nmap -n -A -Pn -sT -sC --script=vuln -g53 -f --mtu 24 -D 192.168.0.1 -p 1-65535"
+echo -e "${YELLOW}[7]${RESET} nmap -n -A -Pn -sS -sC --script=vuln -g53 -f --mtu 24 -D 192.168.0.1"
+echo -e "${YELLOW}[8]${RESET} nmap -n -A -Pn -sS -sC --script=vuln -g53 -f --mtu 24 -D 192.168.0.1 -p 1-65535"
+echo -e "${CYAN}[9]${RESET} proxychains nmap -A --script=vuln ${CYAN}(Você pode adicionar mais opções posteriormente) "
+echo -e "${CYAN}[0]${RESET} proxychains nmap -A --script=vuln -p 1-65535 ${CYAN}(Você pode adicionar mais opções posteriormente)${RESET}\n"
+read -p "Enter your choice (1-9): " option
+
+echo -e "Timing templates:\n
+T0 --->${CYAN} Paranoid ${RESET}
+T1 --->${CYAN} Sneaky${RESET}
+T2 --->${GREEN} Polite${RESET}
+T3 --->${GREEN} Normal${RESET}
+T4 --->${YELLOW} Aggressive${RESET}
+T5 --->${RED} Insane${RESET}"
+
+read -p "Select Timing (T0-T5, -T0 to -T5, or 0-5): " time_sel_input
+
+read -p "Type more options(or leave it empty): " moreopt
+
+# Use regex to extract the number from the input
+if [[ $time_sel_input =~ ^-?T?([0-5])$ ]]; then
+  time_sel="${BASH_REMATCH[1]}"
+else
+  echo "Invalid timing input! Please enter a valid timing (T0-T5, -T0 to -T5, or 0-5)."
+  exit 1
+fi
+
+# Use regex --> ip or domain
+regex_ip="^([0-9]{1,3}\.){3}[0-9]{1,3}([-/][0-9]{1,2})?( ([0-9]{1,3}\.){3}[0-9]{1,3}([-/][0-9]{1,2})?)*$"
+
+if [[ $alvo =~ $regex_ip ]]; then
+  cond_var=1
+else
+  regex_dominio="^(([a-zA-Z0-9](-?[a-zA-Z0-9])*)\.)+[a-zA-Z]{2,}$"
+  if [[ $alvo =~ $regex_dominio ]]; then
+    cond_var=2
+  else
+    cond_var=3
+  fi
+fi
+
+if [ "$cond_var" = "1" ]; then
+  ip_target="$alvo"
+elif [ "$cond_var" = "2" ]; then
+  echo -e "\n${GREEN}--->${RESET} Starting ${YELLOW}Tor Service${RESET}(Using tor-resolve for dns) - ${YELLOW}Root Needed${RESET}!"
+  sudo systemctl start tor
+  echo "wait..."
+  sleep 3
+  ip_target=$(tor-resolve "$alvo")
+  echo -e "${YELLOW}\n$alvo ${GREEN}---> ${CYAN}$ip_target${RESET}\n"
+elif [ "$cond_var" = "3" ]; then
+  echo -e "\nNot valid IP or Domain${YELLOW}!!!${RESET} Run mynmap again and type a valid one. "
+  exit
+fi
+
+date_var=$(date +%d%m%y%H%M)
+nametr=$(echo "$alvo" | tr '/' '-')
+name_file="${nametr}_${date_var}"
+dir_var=$(pwd)
+
+# Verify option case
+case "$option" in
+1)
+  sudo nmap -sV $ip_target -T$time_sel $moreopt | tee "$name_file.txt"
+  echo -e "\nA ${CYAN}file${RESET} was ${CYAN}saved ${RESET}on ${YELLOW}--->${RESET} ${dir_var}/${name_file}.txt"
+  batcat "$name_file.txt"
+  ;;
+
+2)
+  sudo nmap -A $ip_target -T$time_sel $moreopt | tee "$name_file.txt"
+  echo -e "\nA ${CYAN}file${RESET} was ${CYAN}saved ${RESET}on ${YELLOW}--->${RESET} ${dir_var}/${name_file}.txt"
+  batcat "$name_file.txt"
+  ;;
+
+3)
+  sudo nmap -A -p 1-65535 -Pn $ip_target -T$time_sel $moreopt | tee "$name_file.txt"
+  echo -e "\nA ${CYAN}file${RESET} was ${CYAN}saved ${RESET}on ${YELLOW}--->${RESET} ${dir_var}/${name_file}.txt"
+  batcat "$name_file.txt"
+  ;;
+
+4)
+  sudo nmap -n -A -sT -sC --script=vuln -g53 -D 192.168.0.1 $ip_target -T$time_sel $moreopt | tee "$name_file.txt"
+  echo -e "\nA ${CYAN}file${RESET} was ${CYAN}saved ${RESET}on ${YELLOW}--->${RESET} ${dir_var}/${name_file}.txt"
+  batcat "$name_file.txt"
+  ;;
+
+5)
+  sudo nmap -n -A -sT -sC --script=vuln -g53 -f --mtu 24 -D 192.168.0.1 $ip_target -T$time_sel $moreopt | tee "$name_file.txt"
+  echo -e "\nA ${CYAN}file${RESET} was ${CYAN}saved ${RESET}on ${YELLOW}--->${RESET} ${dir_var}/${name_file}.txt"
+  batcat "$name_file.txt"
+  ;;
+
+6)
+  sudo nmap -n -A -Pn -sT -sC --script=vuln -g53 -f --mtu 24 -D 192.168.0.1 -p 1-65535 $ip_target -T$time_sel $moreopt | tee "$name_file.txt"
+  echo -e "\nA ${CYAN}file${RESET} was ${CYAN}saved ${RESET}on ${YELLOW}--->${RESET} ${dir_var}/${name_file}.txt"
+  batcat "$name_file.txt"
+  ;;
+
+7)
+  sudo nmap -n -A -sS -sC --script=vuln -g53 -f --mtu 24 -D 192.168.0.1 $ip_target -T$time_sel $moreopt | tee "$name_file.txt"
+  echo -e "\nA ${CYAN}file${RESET} was ${CYAN}saved ${RESET}on ${YELLOW}--->${RESET} ${dir_var}/${name_file}.txt"
+  batcat "$name_file.txt"
+  ;;
+
+8)
+  sudo nmap -n -A -Pn -sS -sC --script=vuln -g53 -f --mtu 24 -D 192.168.0.1 -p 1-65535 $ip_target -T$time_sel $moreopt | tee "$name_file.txt"
+  echo -e "\nA ${CYAN}file${RESET} was ${CYAN}saved ${RESET}on ${YELLOW}--->${RESET} ${dir_var}/${name_file}.txt"
+  batcat "$name_file.txt"
+  ;;
+
+9)
+  sudo proxychains nmap -A --script=vuln $ip_target -T$time_sel $moreopt | tee "$name_file.txt"
+  echo -e "\nA ${CYAN}file${RESET} was ${CYAN}saved ${RESET}on ${YELLOW}--->${RESET} ${dir_var}/${name_file}.txt"
+  batcat "$name_file.txt"
+  ;;
+
+0)
+  sudo proxychains nmap -A --script=vuln -p 1-65535 $ip_target -T$time_sel $moreopt | tee "$name_file.txt"
+  echo -e "\nA ${CYAN}file${RESET} was ${CYAN}saved ${RESET}on ${YELLOW}--->${RESET} ${dir_var}/${name_file}.txt"
+  batcat "$name_file.txt"
+  ;;
+*)
+  echo "Invalid Option! Run mynmap again and select a valid one"
+  ;;
+esac
+
+sudo systemctl stop tor
+echo "tor service stoped."
+echo "exiting mynmap...see you later!"
+
+exit
