@@ -1,6 +1,6 @@
 # autonmap
 
-![autonmap](https://github.com/user-attachments/assets/79b6301c-f5ed-4a1e-aa26-776361616793)
+![autonmap](https://github.com/user-attachments/assets/b7d2361a-3511-4449-b434-3b249aa1d921)
 
 `autonmap` é um script Bash desenvolvido para agilizar a varredura de redes utilizando o `nmap`, uma poderosa ferramenta para análise de segurança e testes de penetração. Este script oferece diversas opções de varredura, incluindo detecção de versões, varredura abrangente, scripts de vulnerabilidade e técnicas de evasão para evitar a detecção.
 
