@@ -9,7 +9,7 @@
 - **Validação de Entrada via Regex**: Utiliza expressões regulares para determinar se a entrada do usuário é um endereço IP ou um domínio.
 - **Resolução DNS via Tor**: Resolve nomes de domínio utilizando o `tor-resolve` para maior privacidade.
 - **Detecção de Versões**: Identifica as versões dos serviços em execução nas portas abertas.
-- **Varredura Abrangente**: Inclui detecção de SO, detecção de versão, varredura com scripts e traceroute.
+- **Varredura Completa**: Inclui detecção de SO, detecção de versão, varredura com scripts e traceroute.
 - **Scripts de Vulnerabilidade**: Utiliza scripts do `nmap` para identificar vulnerabilidades conhecidas.
 - **Técnicas de Evasão**: Oferece opções para evitar a detecção por sistemas de defesa.
 - **Varredura Completa de Portas**: Examina todas as portas de 1 a 65535.
