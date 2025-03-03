@@ -58,7 +58,7 @@ sudo ln -s /usr/bin/bat /usr/local/bin/batcat
 ## Opções de Varredura:
 
 - **[1]** `nmap -sV`: Detecção de versões.
-- **[2]** `nmap -A`: Varredura abrangente.
+- **[2]** `nmap -A`: Varredura completa.
 - **[3-9]**: Varreduras utilizando scripts de vulnerabilidade e técnicas de evasão.
 
 ## O install.sh instala automaticamente:  
